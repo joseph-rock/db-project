@@ -10,16 +10,7 @@ struct Ingredient {
 
 fn main() -> Result<()> {
     let conn = Connection::open_in_memory()?;
-
-    conn.execute(
-        "CREATE TABLE ingredients (
-            id    INTEGER PRIMARY KEY,
-            name  TEXT NOT NULL,
-            amount  FLOAT NOT NULL,
-            amount_type  TEXT NOT NULL
-        )",
-        (), // empty list of parameters.
-    )?;
+    let _ = create_ingredient_table(&conn);
 
     let milk = Ingredient {
         id: 0,
@@ -35,28 +26,83 @@ fn main() -> Result<()> {
         amount_type: "Ounce".to_string(),
     };
 
-    let _ = insert(&conn, &milk);
-    let _ = insert(&conn, &cereal);
+    let _ = add_ingredient(&conn, &milk);
+    let _ = add_ingredient(&conn, &cereal);
+    let _ = print(&conn);
 
+    let less_milk = Ingredient {
+        id: 0,
+        name: "Milk".to_string(),
+        amount: 0.8,
+        amount_type: "Gallon".to_string(),
+    };
+
+    let _ = update_ingredient(&conn, &less_milk);
+    let _ = print(&conn);
+
+    Ok(())
+}
+
+fn use_ingredient() {}
+
+fn create_ingredient_table(conn: &Connection) -> Result<usize, rusqlite::Error> {
+    conn.execute(
+        "CREATE TABLE ingredients (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            amount FLOAT NOT NULL,
+            amount_type TEXT NOT NULL
+        )",
+        (),
+    )
+}
+
+fn add_ingredient(conn: &Connection, ingredient: &Ingredient) -> Result<usize, rusqlite::Error> {
+    conn.execute(
+        "INSERT INTO ingredients (name, amount, amount_type) 
+            VALUES (?1, ?2, ?3);",
+        (
+            &ingredient.name,
+            &ingredient.amount,
+            &ingredient.amount_type,
+        ),
+    )
+}
+
+fn update_ingredient(conn: &Connection, ingredient: &Ingredient) -> Result<usize, rusqlite::Error> {
+    conn.execute(
+        "UPDATE ingredients
+            SET amount = ?1
+            WHERE name = ?2;",
+        (&ingredient.amount, &ingredient.name),
+    )
+}
+
+fn select_all_ingredients(conn: &Connection) -> Result<Vec<Ingredient>, rusqlite::Error> {
     let mut stmt = conn.prepare("SELECT id, name, amount, amount_type FROM ingredients")?;
-    let ingredients = stmt.query_map([], |row| {
+    stmt.query_map([], |row| {
         Ok(Ingredient {
             id: row.get(0)?,
             name: row.get(1)?,
             amount: row.get(2)?,
             amount_type: row.get(3)?,
         })
-    })?;
-
-    for ingredient in ingredients {
-        println!("{:?}", ingredient.unwrap());
-    }
-    Ok(())
+    })?
+    .collect()
 }
 
-fn insert(conn: &Connection, ingredient: &Ingredient) -> Result<usize, rusqlite::Error> {
-    conn.execute(
-        "INSERT INTO ingredients (name, amount, amount_type) VALUES (?1, ?2, ?3)",
-        (&ingredient.name, &ingredient.amount, &ingredient.amount_type),
-    )
+// Get singe ingredient
+// fn select_ingredient(conn: &Connection, name: &str) -> Result<Ingredient, rusqlite::Error> {
+//     let mut stmt = conn.prepare("SELECT id, name, amount, amount_type FROM ingredients WHERE name = ?2;")?;
+//     let mut rows = stmt.query(rusqlite::params![name])?;
+// }
+
+fn print(conn: &Connection) -> Result<(), rusqlite::Error> {
+    let ingredients = select_all_ingredients(&conn).expect("trust me bro");
+
+    for ingredient in ingredients {
+        println!("{:?}", ingredient);
+    }
+
+    Ok(())
 }
