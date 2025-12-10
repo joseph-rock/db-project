@@ -138,6 +138,7 @@ fn select_all_ingredients(conn: &Connection) -> Result<Vec<Ingredient>, rusqlite
     .collect()
 }
 
+// TODO: Avoid negative amounts
 fn use_ingredient(conn: &Connection, name: &str, amount: f64) -> Result<(), rusqlite::Error> {
     let mut ingredient = select_ingredient(&conn, &name).unwrap();
     ingredient.unit.amount = ingredient.unit.amount - amount;
