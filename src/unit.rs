@@ -8,6 +8,8 @@ pub enum UnitName {
     Pound,
 }
 
+// TODO: Implement Display rather than ToString
+// https://doc.rust-lang.org/std/fmt/trait.Display.html
 impl std::string::ToString for UnitName {
     fn to_string(&self) -> String {
         match self {
