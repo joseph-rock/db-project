@@ -61,8 +61,8 @@ fn from_gallon(amount: f64, to_unit: &UnitName) -> Option<f64> {
 
 fn from_cup(amount: f64, to_unit: &UnitName) -> Option<f64> {
     match to_unit {
-        UnitName::Cup => Some(amount),
         UnitName::Gallon => Some(volume::u_s_cups::to_gallons(amount)),
+        UnitName::Cup => Some(amount),
         _ => None,
     }
 }
@@ -77,8 +77,8 @@ fn from_ounce(amount: f64, to_unit: &UnitName) -> Option<f64> {
 
 fn from_pound(amount: f64, to_unit: &UnitName) -> Option<f64> {
     match to_unit {
+        UnitName::Ounce => Some(mass::pounds::to_ounces(amount)),
         UnitName::Pound => Some(amount),
-        UnitName::Gallon => Some(mass::pounds::to_ounces(amount)),
         _ => None,
     }
 }
