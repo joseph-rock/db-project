@@ -1,13 +1,13 @@
-mod measurements;
+mod unit;
 
-use measurements::*;
+use unit::*;
 use rusqlite::{Connection, Result};
 
 #[derive(Debug)]
 struct Ingredient {
     id: i32,
     name: String,
-    measurement: Measurement,
+    unit: Unit,
 }
 
 fn main() -> Result<()> {
@@ -19,8 +19,8 @@ fn main() -> Result<()> {
     let milk = Ingredient {
         id: 0,
         name: "Milk".to_string(),
-        measurement: Measurement { 
-            name: MeasurementName::Gallon, 
+        unit: Unit { 
+            name: UnitName::Gallon, 
             amount: 1.0,
         },
     };
@@ -29,8 +29,8 @@ fn main() -> Result<()> {
     let cereal = Ingredient {
         id: 1,
         name: "Wheaties".to_string(),
-        measurement: Measurement { 
-            name: MeasurementName::Ounce, 
+        unit: Unit { 
+            name: UnitName::Ounce, 
             amount: 15.6,
         },
     };
@@ -43,8 +43,8 @@ fn main() -> Result<()> {
     let less_milk = Ingredient {
         id: 0,
         name: "Milk".to_string(),
-        measurement: Measurement { 
-            name: MeasurementName::Gallon, 
+        unit: Unit { 
+            name: UnitName::Gallon, 
             amount: 1.5,
         },
     };
@@ -71,7 +71,7 @@ fn init_tables(conn: &Connection) -> Result<usize, rusqlite::Error> {
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
             amount FLOAT NOT NULL,
-            measurement TEXT NOT NULL
+            unit TEXT NOT NULL
         )",
         (),
     )
@@ -79,9 +79,9 @@ fn init_tables(conn: &Connection) -> Result<usize, rusqlite::Error> {
 
 fn add_ingredient(conn: &Connection, ingredient: &Ingredient) -> Result<usize, rusqlite::Error> {
     conn.execute(
-        "INSERT INTO ingredients (name, amount, measurement) 
+        "INSERT INTO ingredients (name, amount, unit) 
             VALUES (?1, ?2, ?3);",
-        (&ingredient.name, &ingredient.measurement.amount, &ingredient.measurement.name.to_string()),
+        (&ingredient.name, &ingredient.unit.amount, &ingredient.unit.name.to_string()),
     )
 }
 
@@ -90,26 +90,26 @@ fn update_ingredient(conn: &Connection, ingredient: &Ingredient) -> Result<usize
         "UPDATE ingredients
             SET amount = ?1
             WHERE name = ?2;",
-        (&ingredient.measurement.amount, &ingredient.name),
+        (&ingredient.unit.amount, &ingredient.name),
     )
 }
 
 fn select_ingredient(conn: &Connection, name: &str) -> Result<Ingredient> {
     let mut stmt = conn.prepare(
-        "SELECT id, name, amount, measurement 
+        "SELECT id, name, amount, unit 
             FROM ingredients 
             WHERE name = ?1;",
     )?;
     stmt.query_one([name], |row| {
         let id = row.get(0)?;
         let name = row.get(1)?;
-        let amount = row.get::<usize, f32>(2)?;
-        let measurement_str = row.get::<usize, String>(3)?;
+        let amount = row.get::<usize, f64>(2)?;
+        let unit_str = row.get::<usize, String>(3)?;
         Ok(Ingredient {
             id,
             name,
-            measurement: Measurement {
-                name: MeasurementName::from_string(&measurement_str).unwrap(),
+            unit: Unit {
+                name: UnitName::from_string(&unit_str).unwrap(),
                 amount,
             },
         })
@@ -118,19 +118,19 @@ fn select_ingredient(conn: &Connection, name: &str) -> Result<Ingredient> {
 
 fn select_all_ingredients(conn: &Connection) -> Result<Vec<Ingredient>, rusqlite::Error> {
     let mut stmt = conn.prepare(
-        "SELECT id, name, amount, measurement 
+        "SELECT id, name, amount, unit 
             FROM ingredients",
     )?;
     stmt.query_map([], |row| {
         let id = row.get(0)?;
         let name = row.get(1)?;
-        let amount = row.get::<usize, f32>(2)?;
-        let measurement_str = row.get::<usize, String>(3)?;
+        let amount = row.get::<usize, f64>(2)?;
+        let unit_str = row.get::<usize, String>(3)?;
         Ok(Ingredient {
             id,
             name,
-            measurement: Measurement {
-                name: MeasurementName::from_string(&measurement_str).unwrap(),
+            unit: Unit {
+                name: UnitName::from_string(&unit_str).unwrap(),
                 amount,
             },
         })
@@ -138,9 +138,9 @@ fn select_all_ingredients(conn: &Connection) -> Result<Vec<Ingredient>, rusqlite
     .collect()
 }
 
-fn use_ingredient(conn: &Connection, name: &str, amount: f32) -> Result<(), rusqlite::Error> {
+fn use_ingredient(conn: &Connection, name: &str, amount: f64) -> Result<(), rusqlite::Error> {
     let mut ingredient = select_ingredient(&conn, &name).unwrap();
-    ingredient.measurement.amount = ingredient.measurement.amount - amount;
+    ingredient.unit.amount = ingredient.unit.amount - amount;
     let _ = update_ingredient(&conn, &ingredient);
     Ok(())
 }
