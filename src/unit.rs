@@ -1,3 +1,4 @@
+use std::fmt;
 use unit_conversions::{ volume, mass };
 
 #[derive(Debug)]
@@ -8,15 +9,13 @@ pub enum UnitName {
     Pound,
 }
 
-// TODO: Implement Display rather than ToString
-// https://doc.rust-lang.org/std/fmt/trait.Display.html
-impl std::string::ToString for UnitName {
-    fn to_string(&self) -> String {
+impl fmt::Display for UnitName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            UnitName::Gallon => "Gallon".to_string(),
-            UnitName::Cup => "Cup".to_string(),
-            UnitName::Ounce => "Ounce".to_string(),
-            UnitName::Pound => "Pound".to_string(),
+            UnitName::Gallon => write!(f, "{}", "Gallon".to_string()),
+            UnitName::Cup => write!(f, "{}", "Cup".to_string()),
+            UnitName::Ounce => write!(f, "{}", "Ounce".to_string()),
+            UnitName::Pound => write!(f, "{}", "Pound".to_string()),
         }
     }
 }
