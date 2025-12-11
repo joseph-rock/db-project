@@ -1,7 +1,7 @@
 mod unit;
 
 use unit::*;
-use rusqlite::{Connection, Result};
+use rusqlite::{Connection, Result, Error};
 
 #[derive(Debug)]
 struct Ingredient {
@@ -65,7 +65,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn init_tables(conn: &Connection) -> Result<usize, rusqlite::Error> {
+fn init_tables(conn: &Connection) -> Result<usize, Error> {
     conn.execute(
         "CREATE TABLE ingredients (
             id INTEGER PRIMARY KEY,
@@ -77,7 +77,7 @@ fn init_tables(conn: &Connection) -> Result<usize, rusqlite::Error> {
     )
 }
 
-fn add_ingredient(conn: &Connection, ingredient: &Ingredient) -> Result<usize, rusqlite::Error> {
+fn add_ingredient(conn: &Connection, ingredient: &Ingredient) -> Result<usize, Error> {
     conn.execute(
         "INSERT INTO ingredients (name, amount, unit) 
             VALUES (?1, ?2, ?3);",
@@ -85,7 +85,7 @@ fn add_ingredient(conn: &Connection, ingredient: &Ingredient) -> Result<usize, r
     )
 }
 
-fn update_ingredient(conn: &Connection, ingredient: &Ingredient) -> Result<usize, rusqlite::Error> {
+fn update_ingredient(conn: &Connection, ingredient: &Ingredient) -> Result<usize, Error> {
     conn.execute(
         "UPDATE ingredients
             SET amount = ?1
@@ -94,7 +94,7 @@ fn update_ingredient(conn: &Connection, ingredient: &Ingredient) -> Result<usize
     )
 }
 
-fn select_ingredient(conn: &Connection, name: &str) -> Result<Ingredient> {
+fn select_ingredient(conn: &Connection, name: &str) -> Result<Ingredient, Error> {
     let mut stmt = conn.prepare(
         "SELECT id, name, amount, unit 
             FROM ingredients 
@@ -116,7 +116,7 @@ fn select_ingredient(conn: &Connection, name: &str) -> Result<Ingredient> {
     })
 }
 
-fn select_all_ingredients(conn: &Connection) -> Result<Vec<Ingredient>, rusqlite::Error> {
+fn select_all_ingredients(conn: &Connection) -> Result<Vec<Ingredient>, Error> {
     let mut stmt = conn.prepare(
         "SELECT id, name, amount, unit 
             FROM ingredients",
@@ -138,10 +138,8 @@ fn select_all_ingredients(conn: &Connection) -> Result<Vec<Ingredient>, rusqlite
     .collect()
 }
 
-// TODO: Avoid negative amounts
-fn use_ingredient(conn: &Connection, name: &str, amount: f64) -> Result<(), rusqlite::Error> {
+fn use_ingredient(conn: &Connection, name: &str, amount: f64) -> Result<usize, Error> {
     let mut ingredient = select_ingredient(&conn, &name).unwrap();
     ingredient.unit.amount = ingredient.unit.amount - amount;
-    let _ = update_ingredient(&conn, &ingredient);
-    Ok(())
+    update_ingredient(&conn, &ingredient)
 }
