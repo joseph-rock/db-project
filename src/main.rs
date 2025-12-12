@@ -10,6 +10,12 @@ struct Ingredient {
     unit: Unit,
 }
 
+struct Recipie {
+    id: i32,
+    name: String,
+    ingredients: Vec<Ingredient>,
+}
+
 fn main() -> Result<()> {
     // Init connection and create tables
     let conn = Connection::open_in_memory()?;

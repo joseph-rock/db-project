@@ -40,6 +40,7 @@ pub struct Unit {
 }
 
 impl Unit {
+    // TODO: consider using result to return Err message (cannot convert from x to y)
     pub fn convert(&self, to: &UnitName) -> Option<f64> {
         match self.name {
             UnitName::Gallon => from_gallon(self.amount, to),
