@@ -19,31 +19,32 @@ struct Recipie {
 fn main() -> Result<()> {
     // Init connection and create tables
     let conn = Connection::open_in_memory()?;
-    let _ = init_tables(&conn);
+    let foo = init_tables(&conn);
+    dbg!(foo);
 
-    // Add milk & cereal
-    let milk = Ingredient {
-        id: 0,
-        name: "Milk".to_string(),
-        unit: Unit {
-            name: UnitName::Gallon,
-            amount: 1.0,
-        },
-    };
-
-    let cereal = Ingredient {
-        id: 1,
-        name: "Wheaties".to_string(),
-        unit: Unit {
-            name: UnitName::Ounce,
-            amount: 15.6,
-        },
-    };
-    let _ = add_ingredient(&conn, &milk);
-    let _ = add_ingredient(&conn, &cereal);
-
-    let ingredients = select_all_ingredients(&conn).expect("broke selecting all ingredients");
-    dbg!(ingredients);
+    // // Add milk & cereal
+    // let milk = Ingredient {
+    //     id: 0,
+    //     name: "Milk".to_string(),
+    //     unit: Unit {
+    //         name: UnitName::Gallon,
+    //         amount: 1.0,
+    //     },
+    // };
+    //
+    // let cereal = Ingredient {
+    //     id: 1,
+    //     name: "Wheaties".to_string(),
+    //     unit: Unit {
+    //         name: UnitName::Ounce,
+    //         amount: 15.6,
+    //     },
+    // };
+    // let _ = add_ingredient(&conn, &milk);
+    // let _ = add_ingredient(&conn, &cereal);
+    //
+    // let ingredients = select_all_ingredients(&conn).expect("broke selecting all ingredients");
+    // dbg!(ingredients);
 
     Ok(())
 }
@@ -51,25 +52,29 @@ fn main() -> Result<()> {
 fn init_tables(conn: &Connection) -> Result<()> {
     conn.execute_batch(
         "
+        CREATE TABLE ingredient(
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL);
+
+        CREATE TABLE inventory(
+            id INTEGER PRIMARY KEY,
+            amount INTEGER NOT NULL,
+            amount_unit TEXT NOT NULL,
+            FOREIGN KEY (id) REFERENCES ingredient(id));
+
         CREATE TABLE recipe(
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
             description TEXT NOT NULL);
 
-        CREATE TABLE inventory(
-            id INTEGER PRIMARY KEY,
-            name TEXT NOT NULL,
-            amount INTEGER NOT NULL,
-            amount_unit TEXT NOT NULL);
-
         CREATE TABLE recipe_ingredient(
-            inventory_id INTEGER NOT NULL,
+            ingredient_id INTEGER NOT NULL,
             recipe_id INTEGER NOT NULL,
             amount INTEGER NOT NULL,
             amount_unit TEXT NOT NULL,
-            FOREIGN KEY (inventory_id) REFERENCES inventory(id),
+            FOREIGN KEY (ingredient_id) REFERENCES ingredient(id),
             FOREIGN KEY (recipe_id) REFERENCES recipe(id),
-            PRIMARY KEY (inventory_id, recipe_id));
+            PRIMARY KEY (ingredient_id, recipe_id));
         ",
     )
 }
