@@ -3,67 +3,28 @@ mod unit;
 use rusqlite::{Connection, Error, Result, params};
 use unit::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Ingredient {
     id: i32,
     name: String,
 }
 
 #[derive(Debug)]
-struct Inventory {
+struct IngredientUnit {
     ingredient: Ingredient,
     unit: Unit,
 }
 
-// struct Recipe {
-//     id: i32,
-//     name: String,
-//     ingredients: Vec<Ingredient>,
-// }
+struct Recipe {
+    id: i32,
+    name: String,
+    ingredients: Vec<IngredientUnit>,
+}
 
 fn main() -> Result<()> {
     // Init connection and create tables
     let conn = Connection::open_in_memory()?;
     let _ = init_tables(&conn);
-
-    // Add milk & cereal
-    let milka = Ingredient {
-        id: 0,
-        name: "Milk".to_string(),
-    };
-    let milkb = Inventory {
-        ingredient: Ingredient {
-            id: 0,
-            name: "Milk".to_string(),
-        },
-        unit: Unit {
-            name: UnitName::Gallon,
-            amount: 15.0,
-        },
-    };
-    let foo = add_ingredient(&conn, &milka);
-    dbg!(foo);
-    let bar = add_inventory(&conn, &milkb);
-    dbg!(bar);
-    let bazz = get_ingredient(&conn, &milka);
-    dbg!(bazz);
-
-    let cereal = Inventory {
-        ingredient: Ingredient {
-            id: 1,
-            name: "Wheaties".to_string(),
-        },
-        unit: Unit {
-            name: UnitName::Ounce,
-            amount: 15.6,
-        },
-    };
-    let _ = add_inventory(&conn, &cereal);
-    let maybe_cereal = get_one_inventory(&conn, &cereal.ingredient.name);
-    dbg!(maybe_cereal);
-
-    let ingredients = get_all_inventory(&conn).expect("broke selecting all ingredients");
-    dbg!(ingredients);
 
     Ok(())
 }
@@ -112,7 +73,7 @@ fn get_ingredient(conn: &Connection, ingredient: &Ingredient) -> Result<Ingredie
     })
 }
 
-fn add_inventory(conn: &Connection, inventory: &Inventory) -> Result<usize, Error> {
+fn add_inventory(conn: &Connection, inventory: &IngredientUnit) -> Result<usize, Error> {
     // try add ingredient first
     // *could* throw away return, expect to work or return "ConstraintViolation" which is fine
     // TODO: should handle other errors
@@ -130,7 +91,7 @@ fn add_inventory(conn: &Connection, inventory: &Inventory) -> Result<usize, Erro
     inventory_stmt.execute(params![ingredient.id, amount, amount_unit])
 }
 
-fn get_all_inventory(conn: &Connection) -> Result<Vec<Inventory>, Error> {
+fn get_all_inventory(conn: &Connection) -> Result<Vec<IngredientUnit>, Error> {
     let mut stmt = conn.prepare(
         "SELECT ingredient.id, ingredient.name, inventory.amount, inventory.amount_unit
             FROM inventory
@@ -141,7 +102,7 @@ fn get_all_inventory(conn: &Connection) -> Result<Vec<Inventory>, Error> {
         let name = row.get(1)?;
         let amount = row.get::<usize, f64>(2)?;
         let unit_str = row.get::<usize, String>(3)?;
-        Ok(Inventory {
+        Ok(IngredientUnit {
             ingredient: Ingredient { id, name },
             unit: Unit {
                 name: UnitName::from_string(&unit_str).unwrap(),
@@ -153,12 +114,12 @@ fn get_all_inventory(conn: &Connection) -> Result<Vec<Inventory>, Error> {
 }
 
 // TODO: this naming is awful
-fn get_one_inventory(conn: &Connection, name: &str) -> Result<Inventory, Error> {
+fn get_one_inventory(conn: &Connection, name: &str) -> Result<IngredientUnit, Error> {
     let mut stmt = conn.prepare(
         "SELECT ingredient.id, ingredient.name, inventory.amount, inventory.amount_unit
             FROM inventory
             JOIN ingredient ON ingredient.id = inventory.id
-            WHERE name = ?1",
+            WHERE name = ?1;",
     )?;
     stmt.query_one([name], |row| {
         let id = row.get(0)?;
@@ -166,7 +127,7 @@ fn get_one_inventory(conn: &Connection, name: &str) -> Result<Inventory, Error> 
         let amount = row.get::<usize, f64>(2)?;
         let unit_str = row.get::<usize, String>(3)?;
         let unit_name = UnitName::from_string(&unit_str).unwrap();
-        Ok(Inventory {
+        Ok(IngredientUnit {
             ingredient: Ingredient {
                 id,
                 name: ingredient_name,
@@ -179,7 +140,7 @@ fn get_one_inventory(conn: &Connection, name: &str) -> Result<Inventory, Error> 
     })
 }
 
-fn update_inventory(conn: &Connection, inventory: &Inventory) -> Result<usize, Error> {
+fn update_inventory(conn: &Connection, inventory: &IngredientUnit) -> Result<usize, Error> {
     conn.execute(
         "UPDATE inventory
             SET amount = ?1
@@ -188,8 +149,14 @@ fn update_inventory(conn: &Connection, inventory: &Inventory) -> Result<usize, E
     )
 }
 
-// fn use_ingredient(conn: &Connection, name: &str, amount: f64) -> Result<usize, Error> {
-//     let mut ingredient = select_ingredient(&conn, &name).unwrap();
-//     ingredient.unit.amount = ingredient.unit.amount - amount;
-//     update_ingredient(&conn, &ingredient)
-// }
+fn get_one_recipe(conn: &Connection, name: &str) -> Result<Recipe, Error> {
+    let mut stmt = conn.prepare(
+        "SELECT ingredient.name, recipe.name, recipe_ingredient.amount, recipe_ingredient.amount_unit
+        FROM recipe_ingredient
+        JOIN ingredient ON ingredient.id = recipe_ingredient.ingredient_id
+        JOIN recipe ON recipe.id = recipe_ingredient.recipe_id
+        WHERE recipe.name = ?1;"
+        )?;
+
+    todo!()
+}
