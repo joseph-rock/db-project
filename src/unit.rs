@@ -7,6 +7,7 @@ pub enum UnitName {
     Cup,
     Ounce,
     Pound,
+    Gram,
 }
 
 impl fmt::Display for UnitName {
@@ -16,6 +17,7 @@ impl fmt::Display for UnitName {
             UnitName::Cup => write!(f, "{}", "Cup".to_string()),
             UnitName::Ounce => write!(f, "{}", "Ounce".to_string()),
             UnitName::Pound => write!(f, "{}", "Pound".to_string()),
+            UnitName::Gram => write!(f, "{}", "Gram".to_string()),
         }
     }
 }
@@ -28,6 +30,7 @@ impl UnitName {
             "Cup" => Some(UnitName::Cup),
             "Ounce" => Some(UnitName::Ounce),
             "Pound" => Some(UnitName::Pound),
+            "Gram" => Some(UnitName::Gram),
             _ => None,
         }
     }
@@ -47,7 +50,16 @@ impl Unit {
             UnitName::Cup => from_cup(self.amount, to),
             UnitName::Ounce => from_ounce(self.amount, to),
             UnitName::Pound => from_pound(self.amount, to),
+            UnitName::Gram => from_gram(self.amount, to),
         }
+    }
+
+    // TODO: error handling, maybe return why this failed instead of non-specific None
+    pub fn subtract(&self, unit: &Unit) -> Option<f64> {
+        if let Some(converted) = unit.convert(&self.name) {
+            return Some(&self.amount - converted);
+        }
+        None
     }
 }
 
@@ -71,6 +83,7 @@ fn from_ounce(amount: f64, to_unit: &UnitName) -> Option<f64> {
     match to_unit {
         UnitName::Ounce => Some(amount),
         UnitName::Pound => Some(mass::ounces::to_pounds(amount)),
+        UnitName::Gram => Some(mass::ounces::to_grams(amount)),
         _ => None,
     }
 }
@@ -79,6 +92,16 @@ fn from_pound(amount: f64, to_unit: &UnitName) -> Option<f64> {
     match to_unit {
         UnitName::Ounce => Some(mass::pounds::to_ounces(amount)),
         UnitName::Pound => Some(amount),
+        UnitName::Gram => Some(mass::pounds::to_grams(amount)),
+        _ => None,
+    }
+}
+
+fn from_gram(amount: f64, to_unit: &UnitName) -> Option<f64> {
+    match to_unit {
+        UnitName::Ounce => Some(mass::grams::to_ounces(amount)),
+        UnitName::Pound => Some(mass::grams::to_pounds(amount)),
+        UnitName::Gram => Some(amount),
         _ => None,
     }
 }
