@@ -32,29 +32,36 @@ fn main() -> Result<()> {
 fn init_tables(conn: &Connection) -> Result<()> {
     conn.execute_batch(
         "
-        CREATE TABLE ingredient(
-            id INTEGER PRIMARY KEY,
-            name TEXT NOT NULL UNIQUE);
+            create table ingredients (
+              id integer primary key,
+              name text not null unique
+            ) strict;
 
-        CREATE TABLE inventory(
-            id INTEGER PRIMARY KEY,
-            amount INTEGER NOT NULL,
-            amount_unit TEXT NOT NULL,
-            FOREIGN KEY (id) REFERENCES ingredient(id));
+            create table inventory (
+              id integer primary key,
+              amount integer not null,
+              unit integer not null references units,
+              ingredient integer not null refrences ingredients
+            ) strict;
 
-        CREATE TABLE recipe(
-            id INTEGER PRIMARY KEY,
-            name TEXT NOT NULL,
-            description TEXT NOT NULL);
+            create table recipes (
+              id integer primary key,
+              name text not null,
+              description text not null
+            ) strict;
 
-        CREATE TABLE recipe_ingredient(
-            ingredient_id INTEGER NOT NULL,
-            recipe_id INTEGER NOT NULL,
-            amount INTEGER NOT NULL,
-            amount_unit TEXT NOT NULL,
-            FOREIGN KEY (ingredient_id) REFERENCES ingredient(id),
-            FOREIGN KEY (recipe_id) REFERENCES recipe(id),
-            PRIMARY KEY (ingredient_id, recipe_id));
+            create table recipe_ingredients (
+              ingredient integer not null references ingredients,
+              recipe integer not null references recipes,
+              amount integer not null,
+              unit integer not null references units,
+              PRIMARY KEY (ingredient, recipe)
+            ) strict;
+
+            create table units (
+              id integer primary key,
+              name text not null
+            ) strict;
         ",
     )
 }
