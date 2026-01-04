@@ -1,28 +1,26 @@
-mod unit;
-
 use rusqlite::{Connection, Error, Result, params};
-use unit::*;
 
 #[derive(Debug, Clone)]
 struct Ingredient {
-    id: i32,
+    id: usize,
     name: String,
 }
 
-// #[derive(Debug)]
-// struct Inventory {
-//     ingredient: Ingredient,
-//     unit: Unit,
-// }
-//
-// struct Recipe {
-//     id: i32,
-//     name: String,
-//     ingredients: Vec<Inventory>,
-// }
+#[derive(Debug, Clone)]
+struct Unit {
+    id: usize,
+    name: String,
+}
+
+#[derive(Debug)]
+struct Inventory {
+    id: usize,
+    ingredient: Ingredient,
+    amount: usize,
+    unit: Unit,
+}
 
 fn main() -> Result<()> {
-    // Init connection and create tables
     let conn = Connection::open_in_memory()?;
     let _ = init_tables(&conn);
 
@@ -44,15 +42,14 @@ fn init_tables(conn: &Connection) -> Result<()> {
 
         create table if not exists recipes (
           id integer primary key,
-          name text not null,
-          description text not null
+          name text not null
         ) strict;
 
         create table if not exists inventory (
           id integer primary key,
+          ingredient integer not null references ingredients
           amount integer not null,
           unit integer not null references units,
-          ingredient integer not null references ingredients
         ) strict;
 
         create table if not exists recipe_ingredients (
@@ -72,8 +69,8 @@ fn insert_ingredient(conn: &Connection, name: &str) -> Result<usize, Error> {
 }
 
 // query_one
-//  returns Err(QueryReturnedMoreThanOneRow)
-//  returns Err(QueryReturnedNoRows)
+//      returns Err(QueryReturnedMoreThanOneRow)
+//      returns Err(QueryReturnedNoRows)
 fn select_ingredient(conn: &Connection, name: &str) -> Result<Ingredient, Error> {
     let mut stmt = conn.prepare("select id, name from ingredients where name = ?1;")?;
     stmt.query_one(params![name], |row| {
@@ -83,26 +80,61 @@ fn select_ingredient(conn: &Connection, name: &str) -> Result<Ingredient, Error>
     })
 }
 
+fn ingredient_exists(conn: &Connection, name: &str) -> Result<bool> {
+    let mut stmt = conn.prepare("select id, name from ingredients where name = ?1;")?;
+    stmt.exists(params![name])
+}
+
 // This table should be pre-populated -- no one is entering units
 fn insert_unit(conn: &Connection, name: &str) -> Result<usize, Error> {
     let mut stmt = conn.prepare("insert into units (name) values (?1);")?;
     stmt.execute(params![name])
 }
 
-fn insert_inventory(conn: &Connection, inventory: (usize, String, String)) -> Result<usize, Error> {
+// query_one
+//      returns Err(QueryReturnedMoreThanOneRow)
+//      returns Err(QueryReturnedNoRows)
+fn select_unit(conn: &Connection, name: &str) -> Result<Unit, Error> {
+    let mut stmt = conn.prepare("select id, name from units where name = ?1;")?;
+    stmt.query_one(params![name], |row| {
+        let id = row.get(0)?;
+        let name = row.get(1)?;
+        Ok(Unit { id, name })
+    })
+}
+
+fn unit_exists(conn: &Connection, name: &str) -> Result<bool> {
+    let mut stmt = conn.prepare("select id, name from units where name = ?1;")?;
+    stmt.exists(params![name])
+}
+
+fn insert_inventory(conn: &Connection, inventory: Inventory) -> Result<usize, Error> {
     // if unit does not exist, insert_unit()
+    // TODO: all units should be populated, error if unit does not exist
+    if !unit_exists(&conn, &inventory.unit.name)? {
+        insert_unit(&conn, &inventory.unit.name)?;
+    }
 
     // if ingredient does not exist, insert_ingredient()
+    if !ingredient_exists(&conn, &inventory.ingredient.name)? {
+        insert_ingredient(&conn, &inventory.ingredient.name)?;
+    }
+
     let mut stmt = conn.prepare(
         "
-        insert into inventory (amount, unit, ingredient)
+        insert into inventory (ingredient, amount, unit)
         values (
-            ?1, 
-            (select id from units where name = ?2), 
-            (select id from ingredients where name = ?3)
+            (select id from ingredients where name = ?1),
+            ?2,
+            (select id from units where name = ?3), 
           );
         ",
     )?;
-    stmt.execute(params![inventory.0, inventory.1, inventory.2])
+    stmt.execute(params![
+        inventory.ingredient.name,
+        inventory.amount,
+        inventory.unit.name
+    ])
 }
 
+// Recipes are more complex
