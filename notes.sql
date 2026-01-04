@@ -33,15 +33,17 @@ create table if not exists recipe_ingredients (
 ) strict;
 
 
--- populate
+-- insert ingredients
 insert into ingredients (name)
 values 
   ('milk'),
   ('wheaties');
 
+-- insert units -- should be pre-populated
 insert into units (name)
 values ('cup');
 
+-- insert inventory
 insert into inventory (amount, unit, ingredient)
 values (
     4, 
@@ -54,9 +56,11 @@ values (
     (select id from ingredients where name = 'wheaties')
   );
 
+-- insert recipe
 insert into recipes (name, description)
 values ('bowl of cereal', 'A simple bowl of cereal');
 
+-- map ingredients to recipe
 insert into recipe_ingredients (ingredient, recipe, amount, unit)
 values (
   (select id from ingredients where name = 'milk'),
