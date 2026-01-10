@@ -2,19 +2,16 @@ use rusqlite::{Connection, Error, Result, params};
 
 #[derive(Debug, Clone)]
 struct Ingredient {
-    id: usize,
     name: String,
 }
 
 #[derive(Debug, Clone)]
 struct Unit {
-    id: usize,
     name: String,
 }
 
 #[derive(Debug)]
 struct Inventory {
-    id: usize,
     ingredient: Ingredient,
     amount: usize,
     unit: Unit,
@@ -22,7 +19,6 @@ struct Inventory {
 
 #[derive(Debug)]
 struct Recipe {
-    id: usize,
     name: String,
     ingredients: Vec<RecipeIngredient>,
 }
@@ -37,6 +33,22 @@ struct RecipeIngredient {
 fn main() -> Result<()> {
     let conn = Connection::open_in_memory()?;
     let _ = init_tables(&conn);
+
+    let milk = RecipeIngredient {
+        ingredient: Ingredient { name: "Milk".to_string() },
+        amount: 1,
+        unit: Unit { name: "Cup".to_string() },
+    };
+
+    let wheaties = RecipeIngredient {
+        ingredient: Ingredient { name: "Wheaties".to_string() },
+        amount: 1,
+        unit: Unit { name: "Cup".to_string() },
+    };
+
+    let ingredients = vec![milk, wheaties];
+
+    let _ = insert_recipe(&conn, "Bowl of Cereal", &ingredients);
 
     Ok(())
 }
@@ -85,14 +97,14 @@ fn insert_ingredient(conn: &Connection, name: &str) -> Result<usize, Error> {
 // query_one
 //      returns Err(QueryReturnedMoreThanOneRow)
 //      returns Err(QueryReturnedNoRows)
-fn select_ingredient(conn: &Connection, name: &str) -> Result<Ingredient, Error> {
-    let mut stmt = conn.prepare("select id, name from ingredients where name = ?1;")?;
-    stmt.query_one(params![name], |row| {
-        let id = row.get(0)?;
-        let name = row.get(1)?;
-        Ok(Ingredient { id, name })
-    })
-}
+// fn select_ingredient(conn: &Connection, name: &str) -> Result<Ingredient, Error> {
+//     let mut stmt = conn.prepare("select id, name from ingredients where name = ?1;")?;
+//     stmt.query_one(params![name], |row| {
+//         let id = row.get(0)?;
+//         let name = row.get(1)?;
+//         Ok(Ingredient { id, name })
+//     })
+// }
 
 fn ingredient_exists(conn: &Connection, name: &str) -> Result<bool> {
     let mut stmt = conn.prepare("select * from ingredients where name = ?1;")?;
@@ -108,14 +120,14 @@ fn insert_unit(conn: &Connection, name: &str) -> Result<usize, Error> {
 // query_one
 //      returns Err(QueryReturnedMoreThanOneRow)
 //      returns Err(QueryReturnedNoRows)
-fn select_unit(conn: &Connection, name: &str) -> Result<Unit, Error> {
-    let mut stmt = conn.prepare("select id, name from units where name = ?1;")?;
-    stmt.query_one(params![name], |row| {
-        let id = row.get(0)?;
-        let name = row.get(1)?;
-        Ok(Unit { id, name })
-    })
-}
+// fn select_unit(conn: &Connection, name: &str) -> Result<Unit, Error> {
+//     let mut stmt = conn.prepare("select id, name from units where name = ?1;")?;
+//     stmt.query_one(params![name], |row| {
+//         let id = row.get(0)?;
+//         let name = row.get(1)?;
+//         Ok(Unit { id, name })
+//     })
+// }
 
 fn unit_exists(conn: &Connection, name: &str) -> Result<bool> {
     let mut stmt = conn.prepare("select * from units where name = ?1;")?;
@@ -149,12 +161,12 @@ fn insert_inventory(conn: &Connection, inventory: Inventory) -> Result<usize, Er
     ])
 }
 
-fn insert_recipe(conn: &Connection, name: &str) -> Result<usize, Error> {
+fn insert_recipe_name(conn: &Connection, name: &str) -> Result<usize, Error> {
     let mut stmt = conn.prepare("insert into recipes (name) values (?1);")?;
     stmt.execute(params![name])
 }
 
-fn recipe_exists(conn: &Connection, name: &str) -> Result<bool> {
+fn recipe_name_exists(conn: &Connection, name: &str) -> Result<bool> {
     let mut stmt = conn.prepare("select * from recipes where name = ?1;")?;
     stmt.exists(params![name])
 }
@@ -164,10 +176,10 @@ fn insert_recipe_ingredient(
     recipe_name: &str,
     ingredient_name: &str,
     unit_name: &str,
-    amount: usize,
+    amount: &usize,
 ) -> Result<usize, Error> {
-    if !recipe_exists(&conn, &recipe_name)? {
-        insert_recipe(&conn, &recipe_name)?;
+    if !recipe_name_exists(&conn, &recipe_name)? {
+        insert_recipe_name(&conn, &recipe_name)?;
     }
     if !ingredient_exists(&conn, &ingredient_name)? {
         insert_ingredient(&conn, &ingredient_name)?;
@@ -191,3 +203,23 @@ fn insert_recipe_ingredient(
 
     stmt.execute(params![ingredient_name, recipe_name, amount, recipe_name])
 }
+
+fn insert_recipe(conn: &Connection, recipe_name: &str, ingredients: &Vec<RecipeIngredient>) -> Result<usize, Error> {
+    for i in ingredients {
+        insert_recipe_ingredient(&conn, &recipe_name, &i.ingredient.name, &i.unit.name, &i.amount)?;
+    }
+
+    Ok(1)
+}
+
+
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//
+//     #[test]
+//     fn it_works() {
+//         let result = add(2, 2);
+//         assert_eq!(result, 4);
+//     }
+// }
