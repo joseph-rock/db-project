@@ -94,11 +94,7 @@ fn unit_exists(conn: &Connection, name: &str) -> Result<bool> {
     stmt.exists(params![name])
 }
 
-fn insert_inventory(
-    conn: &Connection,
-    ingredient_name: &str,
-    unit: &Unit,
-) -> Result<usize, Error> {
+fn insert_inventory(conn: &Connection, ingredient_name: &str, unit: &Unit) -> Result<usize, Error> {
     // TODO: all units should be populated, error if unit does not exist
     if !unit_exists(&conn, &unit.name.to_string())? {
         insert_unit(&conn, &unit.name.to_string())?;
