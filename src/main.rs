@@ -7,8 +7,15 @@ struct RecipeIngredient {
     unit: String,
 }
 
-fn main() -> Result<()> {
+struct Ingredient {
+    id: usize,
+    name: String,
+}
+
+fn main() -> Result<(), Error> {
     let conn = Connection::open_in_memory()?;
+
+    // TODO: Error handling
     let _ = init_tables(&conn);
 
     let milk = RecipeIngredient {
@@ -50,9 +57,9 @@ fn init_tables(conn: &Connection) -> Result<(), Error> {
 
         create table if not exists inventory (
           id integer primary key,
-          ingredient integer not null references ingredients
+          ingredient integer not null references ingredients,
           amount integer not null,
-          unit integer not null references units,
+          unit integer not null references units
         ) strict;
 
         create table if not exists recipe_ingredients (
@@ -76,14 +83,14 @@ fn insert_ingredient(conn: &Connection, name: &str) -> Result<usize, Error> {
 // query_one
 //      returns Err(QueryReturnedMoreThanOneRow)
 //      returns Err(QueryReturnedNoRows)
-// fn select_ingredient(conn: &Connection, name: &str) -> Result<Ingredient, Error> {
-//     let mut stmt = conn.prepare("select id, name from ingredients where name = ?1;")?;
-//     stmt.query_one(params![name], |row| {
-//         let id = row.get(0)?;
-//         let name = row.get(1)?;
-//         Ok(Ingredient { id, name })
-//     })
-// }
+fn select_ingredient(conn: &Connection, name: &str) -> Result<Ingredient, Error> {
+    let mut stmt = conn.prepare("select id, name from ingredients where name = ?1;")?;
+    stmt.query_one(params![name], |row| {
+        let id = row.get(0)?;
+        let name = row.get(1)?;
+        Ok(Ingredient { id, name })
+    })
+}
 
 fn ingredient_exists(conn: &Connection, name: &str) -> Result<bool, Error> {
     let mut stmt = conn.prepare("select * from ingredients where name = ?1;")?;
@@ -174,14 +181,14 @@ fn insert_recipe_ingredient(
         insert into recipe_ingredients (ingredient, recipe, amount, unit)
         values (
             (select id from ingredients where name = ?1),
-            (select id from recipes where name = ?2)
-            ?3,
-            (select id from units where name = ?4), 
+            (select id from recipes where name = ?2),
+            (?3),
+            (select id from units where name = ?4)
           );
         ",
     )?;
 
-    stmt.execute(params![ingredient_name, recipe_name, amount, recipe_name])
+    stmt.execute(params![ingredient_name, recipe_name, amount, unit_name])
 }
 
 fn insert_recipe(
@@ -202,13 +209,45 @@ fn insert_recipe(
     Ok(())
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//
-//     #[test]
-//     fn it_works() {
-//         let result = add(2, 2);
-//         assert_eq!(result, 4);
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ingredient() -> Result<(), Error> {
+        let conn = Connection::open_in_memory()?;
+        init_tables(&conn)?;
+
+        let ingredient_name = "Milk".to_string();
+        insert_ingredient(&conn, &ingredient_name)?;
+
+        let select_ingredient = select_ingredient(&conn, &ingredient_name)?;
+        assert_eq!(select_ingredient.name, ingredient_name);
+
+        Ok(())
+    }
+
+    #[test]
+    fn recipe() -> Result<(), Error> {
+        let conn = Connection::open_in_memory()?;
+        init_tables(&conn)?;
+
+        let recipe_name = "Bowl of Cereal".to_string();
+        let milk = RecipeIngredient {
+            ingredient: "Milk".to_string(),
+            amount: 1,
+            unit: "Cup".to_string(),
+        };
+        let wheaties = RecipeIngredient {
+            ingredient: "Wheaties".to_string(),
+            amount: 1,
+            unit: "Cup".to_string(),
+        };
+
+        let ingredients = vec![milk, wheaties];
+
+        insert_recipe(&conn, &recipe_name, &ingredients)?;
+
+        Ok(())
+    }
+}
