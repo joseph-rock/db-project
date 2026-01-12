@@ -18,21 +18,6 @@ fn main() -> Result<(), Error> {
     // TODO: Error handling
     let _ = init_tables(&conn);
 
-    let milk = RecipeIngredient {
-        ingredient: "Milk".to_string(),
-        amount: 1,
-        unit: "Cup".to_string(),
-    };
-
-    let wheaties = RecipeIngredient {
-        ingredient: "Wheaties".to_string(),
-        amount: 1,
-        unit: "Cup".to_string(),
-    };
-
-    let ingredients = vec![milk, wheaties];
-
-    let _ = insert_recipe(&conn, "Bowl of Cereal", &ingredients);
 
     Ok(())
 }
