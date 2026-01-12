@@ -1,12 +1,12 @@
 use rusqlite::{Connection, Error, Result, params};
 
 mod unit;
+use unit::{Unit, UnitName};
 
 #[derive(Debug)]
 struct RecipeIngredient {
     ingredient: String,
-    amount: usize,
-    unit: String,
+    unit: Unit,
 }
 
 struct Ingredient {
@@ -44,7 +44,7 @@ fn init_tables(conn: &Connection) -> Result<(), Error> {
         create table if not exists inventory (
           id integer primary key,
           ingredient integer not null references ingredients,
-          amount integer not null,
+          amount real not null,
           unit integer not null references units
         ) strict;
 
@@ -52,7 +52,7 @@ fn init_tables(conn: &Connection) -> Result<(), Error> {
           ingredient integer not null references ingredients,
           recipe integer not null references recipes,
           amount integer not null,
-          unit integer not null references units,
+          unit real not null references units,
           PRIMARY KEY (ingredient, recipe)
         ) strict;
         ",
@@ -136,8 +136,7 @@ fn insert_recipe_ingredient(
     conn: &Connection,
     recipe_name: &str,
     ingredient_name: &str,
-    unit_name: &str,
-    amount: &usize,
+    unit: &Unit,
 ) -> Result<usize, Error> {
     if !recipe_name_exists(&conn, &recipe_name)? {
         insert_recipe_name(&conn, &recipe_name)?;
@@ -146,8 +145,8 @@ fn insert_recipe_ingredient(
         insert_ingredient(&conn, &ingredient_name)?;
     }
     // TODO: all units should be populated, error if unit does not exist
-    if !unit_exists(&conn, &unit_name)? {
-        insert_unit(&conn, &unit_name)?;
+    if !unit_exists(&conn, &unit.name.to_string())? {
+        insert_unit(&conn, &unit.name.to_string())?;
     }
 
     let mut stmt = conn.prepare(
@@ -162,7 +161,12 @@ fn insert_recipe_ingredient(
         ",
     )?;
 
-    stmt.execute(params![ingredient_name, recipe_name, amount, unit_name])
+    stmt.execute(params![
+        ingredient_name,
+        recipe_name,
+        unit.amount,
+        unit.name.to_string()
+    ])
 }
 
 fn insert_recipe(
@@ -176,7 +180,6 @@ fn insert_recipe(
             &recipe_name,
             &ingredient.ingredient,
             &ingredient.unit,
-            &ingredient.amount,
         )?;
     }
 
@@ -205,7 +208,7 @@ mod tests {
 
         let ingredient_name = "Milk".to_string();
         let amount = 1;
-        let unit_name = unit::UnitName::Gallon.to_string();
+        let unit_name = UnitName::Gallon.to_string();
 
         insert_inventory(&conn, &ingredient_name, amount, &unit_name)?;
 
@@ -220,13 +223,17 @@ mod tests {
         let recipe_name = "Bowl of Cereal".to_string();
         let milk = RecipeIngredient {
             ingredient: "Milk".to_string(),
-            amount: 1,
-            unit: unit::UnitName::Cup.to_string(),
+            unit: Unit {
+                amount: 1.0,
+                name: UnitName::Cup,
+            },
         };
         let wheaties = RecipeIngredient {
             ingredient: "Wheaties".to_string(),
-            amount: 1,
-            unit: unit::UnitName::Cup.to_string(),
+            unit: Unit {
+                amount: 1.0,
+                name: UnitName::Cup,
+            },
         };
 
         let ingredients = vec![milk, wheaties];
