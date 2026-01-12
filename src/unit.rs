@@ -63,8 +63,6 @@ impl Unit {
     }
 }
 
-// Can I make a trait for all of these conversions?
-
 fn from_gallon(amount: f64, to_unit: &UnitName) -> Option<f64> {
     match to_unit {
         UnitName::Gallon => Some(amount),
