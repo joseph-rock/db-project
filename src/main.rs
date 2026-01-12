@@ -1,5 +1,7 @@
 use rusqlite::{Connection, Error, Result, params};
 
+mod unit;
+
 #[derive(Debug)]
 struct RecipeIngredient {
     ingredient: String,
@@ -203,7 +205,7 @@ mod tests {
 
         let ingredient_name = "Milk".to_string();
         let amount = 1;
-        let unit_name = "Gallon".to_string();
+        let unit_name = unit::UnitName::Gallon.to_string();
 
         insert_inventory(&conn, &ingredient_name, amount, &unit_name)?;
 
@@ -219,12 +221,12 @@ mod tests {
         let milk = RecipeIngredient {
             ingredient: "Milk".to_string(),
             amount: 1,
-            unit: "Cup".to_string(),
+            unit: unit::UnitName::Cup.to_string(),
         };
         let wheaties = RecipeIngredient {
             ingredient: "Wheaties".to_string(),
             amount: 1,
-            unit: "Cup".to_string(),
+            unit: unit::UnitName::Cup.to_string(),
         };
 
         let ingredients = vec![milk, wheaties];
