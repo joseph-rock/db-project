@@ -1,33 +1,10 @@
 use rusqlite::{Connection, Error, Result, params};
 
-#[derive(Debug, Clone)]
-struct Ingredient {
-    name: String,
-}
-
-#[derive(Debug, Clone)]
-struct Unit {
-    name: String,
-}
-
-#[derive(Debug)]
-struct Inventory {
-    ingredient: Ingredient,
-    amount: usize,
-    unit: Unit,
-}
-
-#[derive(Debug)]
-struct Recipe {
-    name: String,
-    ingredients: Vec<RecipeIngredient>,
-}
-
 #[derive(Debug)]
 struct RecipeIngredient {
-    ingredient: Ingredient,
+    ingredient: String,
     amount: usize,
-    unit: Unit,
+    unit: String,
 }
 
 fn main() -> Result<()> {
@@ -35,15 +12,15 @@ fn main() -> Result<()> {
     let _ = init_tables(&conn);
 
     let milk = RecipeIngredient {
-        ingredient: Ingredient { name: "Milk".to_string() },
+        ingredient: "Milk".to_string(),
         amount: 1,
-        unit: Unit { name: "Cup".to_string() },
+        unit: "Cup".to_string(),
     };
 
     let wheaties = RecipeIngredient {
-        ingredient: Ingredient { name: "Wheaties".to_string() },
+        ingredient: "Wheaties".to_string(),
         amount: 1,
-        unit: Unit { name: "Cup".to_string() },
+        unit: "Cup".to_string(),
     };
 
     let ingredients = vec![milk, wheaties];
@@ -53,7 +30,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn init_tables(conn: &Connection) -> Result<()> {
+fn init_tables(conn: &Connection) -> Result<(), Error> {
     conn.execute_batch(
         "
         create table if not exists ingredients (
@@ -86,7 +63,9 @@ fn init_tables(conn: &Connection) -> Result<()> {
           PRIMARY KEY (ingredient, recipe)
         ) strict;
         ",
-    )
+    )?;
+
+    Ok(())
 }
 
 fn insert_ingredient(conn: &Connection, name: &str) -> Result<usize, Error> {
@@ -106,7 +85,7 @@ fn insert_ingredient(conn: &Connection, name: &str) -> Result<usize, Error> {
 //     })
 // }
 
-fn ingredient_exists(conn: &Connection, name: &str) -> Result<bool> {
+fn ingredient_exists(conn: &Connection, name: &str) -> Result<bool, Error> {
     let mut stmt = conn.prepare("select * from ingredients where name = ?1;")?;
     stmt.exists(params![name])
 }
@@ -134,14 +113,19 @@ fn unit_exists(conn: &Connection, name: &str) -> Result<bool> {
     stmt.exists(params![name])
 }
 
-fn insert_inventory(conn: &Connection, inventory: Inventory) -> Result<usize, Error> {
+fn insert_inventory(
+    conn: &Connection,
+    ingredient_name: &str,
+    amount: usize,
+    unit_name: &str,
+) -> Result<usize, Error> {
     // TODO: all units should be populated, error if unit does not exist
-    if !unit_exists(&conn, &inventory.unit.name)? {
-        insert_unit(&conn, &inventory.unit.name)?;
+    if !unit_exists(&conn, &unit_name)? {
+        insert_unit(&conn, &unit_name)?;
     }
 
-    if !ingredient_exists(&conn, &inventory.ingredient.name)? {
-        insert_ingredient(&conn, &inventory.ingredient.name)?;
+    if !ingredient_exists(&conn, &ingredient_name)? {
+        insert_ingredient(&conn, &ingredient_name)?;
     }
 
     let mut stmt = conn.prepare(
@@ -154,11 +138,7 @@ fn insert_inventory(conn: &Connection, inventory: Inventory) -> Result<usize, Er
           );
         ",
     )?;
-    stmt.execute(params![
-        inventory.ingredient.name,
-        inventory.amount,
-        inventory.unit.name
-    ])
+    stmt.execute(params![ingredient_name, amount, unit_name])
 }
 
 fn insert_recipe_name(conn: &Connection, name: &str) -> Result<usize, Error> {
@@ -204,14 +184,23 @@ fn insert_recipe_ingredient(
     stmt.execute(params![ingredient_name, recipe_name, amount, recipe_name])
 }
 
-fn insert_recipe(conn: &Connection, recipe_name: &str, ingredients: &Vec<RecipeIngredient>) -> Result<usize, Error> {
-    for i in ingredients {
-        insert_recipe_ingredient(&conn, &recipe_name, &i.ingredient.name, &i.unit.name, &i.amount)?;
+fn insert_recipe(
+    conn: &Connection,
+    recipe_name: &str,
+    ingredients: &Vec<RecipeIngredient>,
+) -> Result<(), Error> {
+    for ingredient in ingredients {
+        insert_recipe_ingredient(
+            &conn,
+            &recipe_name,
+            &ingredient.ingredient,
+            &ingredient.unit,
+            &ingredient.amount,
+        )?;
     }
 
-    Ok(1)
+    Ok(())
 }
-
 
 // #[cfg(test)]
 // mod tests {
