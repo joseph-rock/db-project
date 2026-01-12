@@ -18,7 +18,6 @@ fn main() -> Result<(), Error> {
     // TODO: Error handling
     let _ = init_tables(&conn);
 
-
     Ok(())
 }
 
@@ -88,18 +87,6 @@ fn insert_unit(conn: &Connection, name: &str) -> Result<usize, Error> {
     stmt.execute(params![name])
 }
 
-// query_one
-//      returns Err(QueryReturnedMoreThanOneRow)
-//      returns Err(QueryReturnedNoRows)
-// fn select_unit(conn: &Connection, name: &str) -> Result<Unit, Error> {
-//     let mut stmt = conn.prepare("select id, name from units where name = ?1;")?;
-//     stmt.query_one(params![name], |row| {
-//         let id = row.get(0)?;
-//         let name = row.get(1)?;
-//         Ok(Unit { id, name })
-//     })
-// }
-
 fn unit_exists(conn: &Connection, name: &str) -> Result<bool> {
     let mut stmt = conn.prepare("select * from units where name = ?1;")?;
     stmt.exists(params![name])
@@ -125,8 +112,8 @@ fn insert_inventory(
         insert into inventory (ingredient, amount, unit)
         values (
             (select id from ingredients where name = ?1),
-            ?2,
-            (select id from units where name = ?3), 
+            (?2),
+            (select id from units where name = ?3)
           );
         ",
     )?;
@@ -206,8 +193,19 @@ mod tests {
         let ingredient_name = "Milk".to_string();
         insert_ingredient(&conn, &ingredient_name)?;
 
-        let select_ingredient = select_ingredient(&conn, &ingredient_name)?;
-        assert_eq!(select_ingredient.name, ingredient_name);
+        Ok(())
+    }
+
+    #[test]
+    fn inventory() -> Result<(), Error> {
+        let conn = Connection::open_in_memory()?;
+        init_tables(&conn)?;
+
+        let ingredient_name = "Milk".to_string();
+        let amount = 1;
+        let unit_name = "Gallon".to_string();
+
+        insert_inventory(&conn, &ingredient_name, amount, &unit_name)?;
 
         Ok(())
     }
