@@ -97,12 +97,11 @@ fn unit_exists(conn: &Connection, name: &str) -> Result<bool> {
 fn insert_inventory(
     conn: &Connection,
     ingredient_name: &str,
-    amount: usize,
-    unit_name: &str,
+    unit: &Unit,
 ) -> Result<usize, Error> {
     // TODO: all units should be populated, error if unit does not exist
-    if !unit_exists(&conn, &unit_name)? {
-        insert_unit(&conn, &unit_name)?;
+    if !unit_exists(&conn, &unit.name.to_string())? {
+        insert_unit(&conn, &unit.name.to_string())?;
     }
 
     if !ingredient_exists(&conn, &ingredient_name)? {
@@ -119,7 +118,7 @@ fn insert_inventory(
           );
         ",
     )?;
-    stmt.execute(params![ingredient_name, amount, unit_name])
+    stmt.execute(params![ingredient_name, unit.amount, unit.name.to_string()])
 }
 
 fn insert_recipe_name(conn: &Connection, name: &str) -> Result<usize, Error> {
@@ -207,10 +206,12 @@ mod tests {
         init_tables(&conn)?;
 
         let ingredient_name = "Milk".to_string();
-        let amount = 1;
-        let unit_name = UnitName::Gallon.to_string();
+        let unit = Unit {
+            amount: 1.0,
+            name: UnitName::Gallon,
+        };
 
-        insert_inventory(&conn, &ingredient_name, amount, &unit_name)?;
+        insert_inventory(&conn, &ingredient_name, &unit)?;
 
         Ok(())
     }
