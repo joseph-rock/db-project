@@ -28,17 +28,17 @@ fn init_tables(conn: &Connection) -> Result<(), Error> {
         "
         create table if not exists ingredients (
           id integer primary key,
-          name text not null
+          name text unique not null
         ) strict;
 
         create table if not exists units (
           id integer primary key,
-          name text not null
+          name text unique not null
         ) strict;
 
         create table if not exists recipes (
           id integer primary key,
-          name text not null
+          name text unique not null
         ) strict;
 
         create table if not exists inventory (
@@ -62,7 +62,7 @@ fn init_tables(conn: &Connection) -> Result<(), Error> {
 }
 
 fn insert_ingredient(conn: &Connection, name: &str) -> Result<usize, Error> {
-    let mut stmt = conn.prepare("insert into ingredients (name) values (?1);")?;
+    let mut stmt = conn.prepare("insert or ignore into ingredients (name) values (?1);")?;
     stmt.execute(params![name])
 }
 
@@ -78,31 +78,16 @@ fn select_ingredient(conn: &Connection, name: &str) -> Result<Ingredient, Error>
     })
 }
 
-fn ingredient_exists(conn: &Connection, name: &str) -> Result<bool, Error> {
-    let mut stmt = conn.prepare("select * from ingredients where name = ?1;")?;
-    stmt.exists(params![name])
-}
-
 // This table should be pre-populated -- no one is entering units
 fn insert_unit(conn: &Connection, name: &str) -> Result<usize, Error> {
-    let mut stmt = conn.prepare("insert into units (name) values (?1);")?;
+    let mut stmt = conn.prepare("insert or ignore into units (name) values (?1);")?;
     stmt.execute(params![name])
-}
-
-fn unit_exists(conn: &Connection, name: &str) -> Result<bool> {
-    let mut stmt = conn.prepare("select * from units where name = ?1;")?;
-    stmt.exists(params![name])
 }
 
 fn insert_inventory(conn: &Connection, ingredient_name: &str, unit: &Unit) -> Result<usize, Error> {
     // TODO: all units should be populated, error if unit does not exist
-    if !unit_exists(&conn, &unit.name.to_string())? {
-        insert_unit(&conn, &unit.name.to_string())?;
-    }
-
-    if !ingredient_exists(&conn, &ingredient_name)? {
-        insert_ingredient(&conn, &ingredient_name)?;
-    }
+    insert_unit(&conn, &unit.name.to_string())?;
+    insert_ingredient(&conn, &ingredient_name)?;
 
     let mut stmt = conn.prepare(
         "
@@ -118,13 +103,8 @@ fn insert_inventory(conn: &Connection, ingredient_name: &str, unit: &Unit) -> Re
 }
 
 fn insert_recipe_name(conn: &Connection, name: &str) -> Result<usize, Error> {
-    let mut stmt = conn.prepare("insert into recipes (name) values (?1);")?;
+    let mut stmt = conn.prepare("insert or ignore into recipes (name) values (?1);")?;
     stmt.execute(params![name])
-}
-
-fn recipe_name_exists(conn: &Connection, name: &str) -> Result<bool> {
-    let mut stmt = conn.prepare("select * from recipes where name = ?1;")?;
-    stmt.exists(params![name])
 }
 
 fn insert_recipe_ingredient(
@@ -133,16 +113,9 @@ fn insert_recipe_ingredient(
     ingredient_name: &str,
     unit: &Unit,
 ) -> Result<usize, Error> {
-    if !recipe_name_exists(&conn, &recipe_name)? {
-        insert_recipe_name(&conn, &recipe_name)?;
-    }
-    if !ingredient_exists(&conn, &ingredient_name)? {
-        insert_ingredient(&conn, &ingredient_name)?;
-    }
-    // TODO: all units should be populated, error if unit does not exist
-    if !unit_exists(&conn, &unit.name.to_string())? {
-        insert_unit(&conn, &unit.name.to_string())?;
-    }
+    insert_recipe_name(&conn, &recipe_name)?;
+    insert_ingredient(&conn, &ingredient_name)?;
+    insert_unit(&conn, &unit.name.to_string())?;
 
     let mut stmt = conn.prepare(
         "
