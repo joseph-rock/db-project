@@ -61,7 +61,12 @@ fn init_tables(conn: &Connection) -> Result<(), Error> {
     Ok(())
 }
 
+fn normalize_name(name: &str) -> String {
+    name.to_lowercase()
+}
+
 fn insert_ingredient(conn: &Connection, name: &str) -> Result<usize, Error> {
+    let name = normalize_name(name);
     let mut stmt = conn.prepare("insert or ignore into ingredients (name) values (?1);")?;
     stmt.execute(params![name])
 }
@@ -70,6 +75,7 @@ fn insert_ingredient(conn: &Connection, name: &str) -> Result<usize, Error> {
 //      returns Err(QueryReturnedMoreThanOneRow)
 //      returns Err(QueryReturnedNoRows)
 fn select_ingredient(conn: &Connection, name: &str) -> Result<Ingredient, Error> {
+    let name = normalize_name(name);
     let mut stmt = conn.prepare("select id, name from ingredients where name = ?1;")?;
     stmt.query_one(params![name], |row| {
         let id = row.get(0)?;
@@ -80,13 +86,16 @@ fn select_ingredient(conn: &Connection, name: &str) -> Result<Ingredient, Error>
 
 // This table should be pre-populated -- no one is entering units
 fn insert_unit(conn: &Connection, name: &str) -> Result<usize, Error> {
+    let name = normalize_name(name);
     let mut stmt = conn.prepare("insert or ignore into units (name) values (?1);")?;
     stmt.execute(params![name])
 }
 
 fn insert_inventory(conn: &Connection, ingredient_name: &str, unit: &Unit) -> Result<usize, Error> {
-    // TODO: all units should be populated, error if unit does not exist
-    insert_unit(&conn, &unit.name.to_string())?;
+    let unit_name = normalize_name(&unit.name.to_string());
+    let ingredient_name = normalize_name(ingredient_name);
+
+    insert_unit(&conn, &unit_name)?;
     insert_ingredient(&conn, &ingredient_name)?;
 
     let mut stmt = conn.prepare(
@@ -99,10 +108,11 @@ fn insert_inventory(conn: &Connection, ingredient_name: &str, unit: &Unit) -> Re
           );
         ",
     )?;
-    stmt.execute(params![ingredient_name, unit.amount, unit.name.to_string()])
+    stmt.execute(params![ingredient_name, unit.amount, unit_name])
 }
 
 fn insert_recipe_name(conn: &Connection, name: &str) -> Result<usize, Error> {
+    let name = normalize_name(name);
     let mut stmt = conn.prepare("insert or ignore into recipes (name) values (?1);")?;
     stmt.execute(params![name])
 }
@@ -113,9 +123,13 @@ fn insert_recipe_ingredient(
     ingredient_name: &str,
     unit: &Unit,
 ) -> Result<usize, Error> {
+    let recipe_name = normalize_name(recipe_name);
+    let ingredient_name = normalize_name(ingredient_name);
+    let unit_name = normalize_name(&unit.name.to_string());
+
     insert_recipe_name(&conn, &recipe_name)?;
     insert_ingredient(&conn, &ingredient_name)?;
-    insert_unit(&conn, &unit.name.to_string())?;
+    insert_unit(&conn, &unit_name)?;
 
     let mut stmt = conn.prepare(
         "
@@ -133,7 +147,7 @@ fn insert_recipe_ingredient(
         ingredient_name,
         recipe_name,
         unit.amount,
-        unit.name.to_string()
+        unit_name,
     ])
 }
 
